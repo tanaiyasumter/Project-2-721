@@ -1,0 +1,153 @@
+---
+title: "Project 2"
+author: "Tanaiya Sumter"
+date: "2025-12-01"
+output: word_document
+---
+
+```{r include=FALSE}
+
+library(tidyverse)
+library(dplyr)
+
+
+```
+
+
+## GitHub link:
+
+
+
+<br>
+
+```{r include=FALSE}
+
+#load in data
+
+source(here::here("functions of project 2.R"))
+
+```
+ 
+
+```{r include=FALSE}
+
+#combine all datasets
+
+all_data <- bind_rows(d18, d19, d20) |>
+  mutate(
+    year = year(Date),
+    month = month(Date, label = TRUE, abbr = TRUE)
+  )
+
+```
+<br>
+
+## Figure 1 : Seasonal Patterns of CO and Ozone Concentrations  
+
+This plot displays the monthly average concentrations of CO and Ozone across a three-year study period. 
+
+```{r echo=FALSE}
+
+#preparation
+
+monthly3 <- all_data |>
+  group_by(month) |>
+  summarise(
+    mean_CO = mean(CO_Daily8HRMAX, na.rm = TRUE),
+    se_CO = sd(CO_Daily8HRMAX, na.rm = TRUE) / sqrt(n()),
+    mean_O3 = mean(Ozone_Daily8HRMAX, na.rm = TRUE),
+    se_O3 = sd(Ozone_Daily8HRMAX, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  mutate(
+    ci_lower_CO = mean_CO - 1.96 * se_CO,
+    ci_upper_CO = mean_CO + 1.96 * se_CO,
+    ci_lower_O3 = mean_O3 - 1.96 * se_O3,
+    ci_upper_O3 = mean_O3 + 1.96 * se_O3
+  )
+
+plot1 <- monthly3 |>
+  pivot_longer(
+    cols = c(mean_CO, mean_O3),
+    names_to = "pollutant",
+    values_to = "concentration"
+  ) |>
+  mutate(
+    ci_lower = ifelse(pollutant == "mean_CO", ci_lower_CO, ci_lower_O3),
+    ci_upper = ifelse(pollutant == "mean_CO", ci_upper_CO, ci_upper_O3),
+    pollutant = ifelse(pollutant == "mean_CO", "Carbon Monoxide (CO)", "Ozone (O3)")
+  )
+
+#creating plot
+
+ggplot(plot1, aes(x = month, y = concentration, color = pollutant, group = pollutant)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2, linewidth = 0.8) +
+  scale_color_manual(values = c("Carbon Monoxide (CO)" = "firebrick2", "Ozone (O3)" = "darkblue")) +
+  labs(
+    title = "Seasonal Patterns of CO and Ozone Concentrations",
+    x = "Month",
+    y = "Concentration (CO & O3)",
+    color = "Pollutant"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14)
+    
+  )
+
+```
+
+
+These are the monthly averages across 2018-2020 with 95% confidence intervals. Both of these pollutants show distinct seasonal patterns. CO has elevated levels during fall/winter months while Ozone concentrations has slight elevation during summer months.
+
+
+\newpage
+
+## Figure 2: PM2.5 Concentration Patterns Across Years   
+
+This plot displays the monthly PM2.5 concentrations for each year.
+
+```{r echo=FALSE}
+
+# prep
+
+monthly_pm25 <- all_data |>
+  group_by(year, month) |>
+  summarise(
+    mean_PM25 = mean(PM25_DailyMEAN, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(year = factor(year))
+
+# plot being created
+
+ggplot(monthly_pm25, aes(x = month, y = mean_PM25, color = year, group = year)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3.5, alpha = 0.8) +
+  scale_color_manual(
+    values = c("2018" = "darkorange", "2019" = "darkgreen", "2020" = "violetred4"),
+    name = "Year"
+  ) +
+  labs(
+    title = "PM2.5 Concentration Patterns Across Years",
+    x = "Month",
+    y = "PM2.5 Concentration (µg/m³)",
+    color = "Year"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14),
+     axis.text.x = element_text(angle = 0),
+    panel.grid.minor = element_blank()
+  
+   
+  )
+  
+
+```
+
+These are the monthly averages by year in Durham County, NC. This pollutant has had elevated levels in summer and winter months across the years.
